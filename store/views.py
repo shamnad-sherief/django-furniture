@@ -1,5 +1,7 @@
 import django
 from django.contrib.auth.models import User
+from django.conf import settings
+import stripe
 from store.models import Address, Cart, Category, Order, Product
 from django.shortcuts import redirect, render, get_object_or_404
 from .forms import RegistrationForm, AddressForm
@@ -197,7 +199,30 @@ def orders(request):
     return render(request, 'store/orders.html', {'orders': all_orders})
 
 
+def payment(request):
+    if request.method == 'POST':
+        # Get the payment token ID submitted by the form
+        token = request.POST.get('stripeToken')
 
+        # Create a charge: this will charge the user's card
+        try:
+            charge = stripe.Charge.create(
+                amount=1000,
+                currency='usd',
+                description='Example charge',
+                source=token,
+            )
+        except stripe.error.CardError as e:
+            # The card has been declined
+            pass
+
+        # Do something with the charge object (e.g. save to database)
+
+        # Render a success page
+        return render(request, 'success.html')
+
+    # Render the payment page
+    return render(request, 'payment.html', {'publishable_key': settings.STRIPE_PUBLISHABLE_KEY})
 
 
 def shop(request):
