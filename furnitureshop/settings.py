@@ -24,12 +24,13 @@ if DEBUG:
 #     STRIPE_PUBLISHABLE_KEY = 'production_publishable_key'
 #     STRIPE_SECRET_KEY = 'production_secret_key'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
