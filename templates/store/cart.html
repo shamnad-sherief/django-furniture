@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 {% load humanize %}
+{% load custom_filters %}
 
     {% block content %}
       <div class="container">
@@ -87,7 +88,7 @@
               <div class="bg-light px-4 py-3">
                 <div class="row align-items-center text-center">
                   <div class="col-md-6 mb-3 mb-md-0 text-md-left"><a class="btn btn-link p-0 text-dark btn-sm" href="{% url 'store:home' %}"><i class="fas fa-long-arrow-alt-left mr-2"> </i>Continue shopping</a></div>
-                  <div class="col-md-6 text-md-right"><a class="btn btn-outline-dark btn-sm" href="{% url 'store:checkout' %}">Procceed to checkout<i class="fas fa-long-arrow-alt-right ml-2"></i></a></div>
+                  <div class="col-md-6 text-md-right"><a class="btn btn-outline-dark btn-sm" href="checkout.html">Procceed to checkout<i class="fas fa-long-arrow-alt-right ml-2"></i></a></div>
                 </div>
               </div>
             </div>
@@ -113,15 +114,15 @@
                     </li>
                   </ul>
 
-                  
+
                   <h5 class="text-uppercase my-5">Select Shipping Address</h5>
-                  
+
                   <form action="{% url 'store:checkout' %}" id="myform">
 
                     {% if addresses %}
                       {% for address in addresses %}
                         <div class="mb-3">
-                        <input type="radio" name="address" value="{{address.id}}"> <strong>Address {{forloop.counter}}</strong> <br>
+                        <input type="radio" name="address" value="{{address.id}}" onclick="sendDataToSession('{{address.id}}')"> <strong>Address {{forloop.counter}}</strong> <br>
                         ( {{address.locality}}, {{address.city}}, {{address.state}} )
                         </div>
                       {% endfor %}
@@ -135,13 +136,77 @@
 
                   </form>
 
+                  <script>
+                  function sendDataToSession(addressId) {
+                    console.log(addressId)
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/set-session-data/', true);
+                    xhr.setRequestHeader('Content-Type', 'application/json');
+                    xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken')); // include the CSRF token
+                    xhr.onreadystatechange = function() {
+                      if (xhr.readyState === 4 && xhr.status === 200) {
+                        console.log(xhr.responseText);
+                      }
+                    };
+                    var data = JSON.stringify({'address_id': addressId});
+                    console.log(data)
+                    xhr.send(data);
+                  }
+
+                  // helper function to get the CSRF cookie
+                  function getCookie(name) {
+                    var cookieValue = null;
+                    if (document.cookie && document.cookie !== '') {
+                      var cookies = document.cookie.split(';');
+                      for (var i = 0; i < cookies.length; i++) {
+                        var cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                          break;
+                        }
+                      }
+                    }
+                    return cookieValue;
+                  }
+                </script>
+
+
+
+                    <button  id="my-stripe-button"  class="btn btn-dark btn-lg btn-outline-dark" > <i class="fas fa-dollar-sign mr-2"></i>Online Payment</button>
+
+                   <script>
+                      var stripeButton = document.getElementById('my-stripe-button');
+                      stripeButton.addEventListener('click', function() {
+                        // Open Checkout with further options:
+                        var handler = StripeCheckout.configure({
+                          key: '{{ publishable_key }}',
+                          locale: 'auto',
+                          currency: 'INR',
+                          token: function(token) {
+                            // Redirect to a "checkout" page after the payment has been successfully processed
+                            window.location.href = '/checkout';
+                          }
+                        });
+
+                        handler.open({
+                          name: 'HomeDecour.com',
+                          description: 'Online Payment',
+                          amount: {{ total_amount|multiply_by_100 }}
+                        });
+                      });
+                    </script>
+
                 </div>
               </div>
             </div>
 
           </div>
         </section>
-        
+
+             <script type="text/javascript">
+document.getElementsByClassName("stripe-button-el")[0].style.display = "none";
+</script>
+
         {% else %}
 
           <div class="text-center py-5">

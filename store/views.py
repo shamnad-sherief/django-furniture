@@ -10,6 +10,10 @@ from django.views import View
 import decimal
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator # for Class Based Views
+from django.http import JsonResponse
+import json
+from django.views.decorators.csrf import csrf_exempt
+
 
 
 # Create your views here.
@@ -120,6 +124,7 @@ def add_to_cart(request):
 
 @login_required
 def cart(request):
+    stripe.api_key = settings.STRIPE_SECRET_KEY
     user = request.user
     cart_products = Cart.objects.filter(user=user)
 
@@ -142,6 +147,8 @@ def cart(request):
         'shipping_amount': shipping_amount,
         'total_amount': amount + shipping_amount,
         'addresses': addresses,
+        'publishable_key': settings.STRIPE_PUBLISHABLE_KEY,
+
     }
     return render(request, 'store/cart.html', context)
 
@@ -180,8 +187,9 @@ def minus_cart(request, cart_id):
 @login_required
 def checkout(request):
     user = request.user
-    address_id = request.GET.get('address')
-    
+
+    address_id = request.session.get('address_id')
+
     address = get_object_or_404(Address, id=address_id)
     # Get all the products of User in Cart
     cart = Cart.objects.filter(user=user)
@@ -201,16 +209,15 @@ def orders(request):
 
 def payment(request):
     if request.method == 'POST':
-        # Get the payment token ID submitted by the form
-        token = request.POST.get('stripeToken')
+        stripe.api_key = settings.STRIPE_SECRET_KEY
 
         # Create a charge: this will charge the user's card
         try:
-            charge = stripe.Charge.create(
+            charge = stripe.PaymentIntent.create(
                 amount=1000,
-                currency='usd',
+                currency='INR',
                 description='Example charge',
-                source=token,
+                # source=token,
             )
         except stripe.error.CardError as e:
             # The card has been declined
@@ -219,17 +226,26 @@ def payment(request):
         # Do something with the charge object (e.g. save to database)
 
         # Render a success page
-        return render(request, 'success.html')
+        return redirect('store:checkout')
 
     # Render the payment page
-    return render(request, 'payment.html', {'publishable_key': settings.STRIPE_PUBLISHABLE_KEY})
+    return render(request, 'store/payment.html', {'publishable_key': settings.STRIPE_PUBLISHABLE_KEY})
 
 
 def shop(request):
     return render(request, 'store/shop.html')
 
 
-
+def set_session_data(request):
+    if request.method == 'POST':
+        data = json.loads(request.body.decode('utf-8'))
+        address_id = data.get('address_id')
+        print("hello")
+        print(address_id)
+        request.session['address_id'] = address_id
+        return JsonResponse({'success': True})
+    else:
+        return JsonResponse({'success': False})
 
 
 def test(request):
